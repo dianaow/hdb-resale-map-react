@@ -63,8 +63,8 @@ const ResalePricesChart = forwardRef(({
   const { groupBy, title, subtitle, y } = options;
 
   // Update dots for each data point
-  const updateDotsAppearance = useCallback((hoveredDotData = null, items = selectedItemsRef.current) => {
-    const hoveredName = hoveredDotData && hoveredDotData[groupBy];
+  const updateDotsAppearance = useCallback((data = null, items = selectedItemsRef.current, type = 'mouseover') => {
+    const name = data && data[groupBy];
 
     const { svg, xScale, yScale, colorScale, highlighted, tooltip } = chartStateRef.current;
     
@@ -73,14 +73,15 @@ const ResalePricesChart = forwardRef(({
       if (!dotData) return;
       
       const element = d3.select(this);
-      const dotName = dotData[groupBy];
-      const isHovered = hoveredName && dotName === hoveredName;
-      const isSelected = items.includes(dotName);
+      const dotName = dotData && dotData[groupBy];
+      const isHovered = (type === 'mouseover') ? (dotName === name) : null;
+      const isSelected = (type === 'click' || type === 'mouseout') ? (items.includes(dotName)) : null;
       
-      // Update the data-selected attribute
-      element.attr("data-selected", isSelected ? "true" : "false");
+      if (type === 'click') d3.select(this).attr("data-selected", isSelected ? true : false);
+      if (type === 'mouseover') d3.select(this).attr("data-hovered", isHovered ? true : false);
+      if (type === 'mouseout') { d3.select(this).attr("data-hovered", false) }
 
-      const style = getPointStyle(dotName, isSelected, isHovered, items.length > 0, highlighted, colorScale);
+      const style = getPointStyle(dotName, isSelected, isHovered, highlighted, colorScale);
       element
         .style('fill', style.fill)
         .style('opacity', style.opacity)
@@ -88,11 +89,11 @@ const ResalePricesChart = forwardRef(({
     });
 
     // Handle tooltip positioning and content
-    if (tooltip && hoveredDotData) {
-      const hoveredPrice = hoveredDotData[y] || 0;
-      const hoveredDate = new Date(hoveredDotData.date);
+    if (tooltip && data && type === 'mouseover') {
+      const hoveredPrice = data[y] || 0;
+      const hoveredDate = new Date(data.date);
       
-      tooltip.select(".tooltip-title").text(hoveredName);
+      tooltip.select(".tooltip-title").text(name);
       tooltip.select(".tooltip-price").text(`${y}: $${hoveredPrice.toLocaleString()}`);
       tooltip.select(".tooltip-date").text(`Date: ${formatDate(hoveredDate)}`);
       
@@ -158,7 +159,7 @@ const ResalePricesChart = forwardRef(({
           
         // Update the ref directly
         selectedItemsRef.current = newSelectedItems;
-        updateDotsAppearance(null, newSelectedItems);
+        updateDotsAppearance(null, newSelectedItems, 'click');
       }
     }
   }), [updateDotsAppearance, groupBy]);
@@ -166,7 +167,7 @@ const ResalePricesChart = forwardRef(({
   // Main chart rendering effect
   useEffect(() => {
     if (!data?.length || !chartRef.current || !dimensions.width) return;
-
+    console.log('Rendering dot chart')
     if(groupBy === 'town') {
       // Filter selectedItemsRef to only keep items that exist in the current data
       const availableItemsInData = new Set(data.map(d => d[groupBy]));
@@ -225,7 +226,7 @@ const ResalePricesChart = forwardRef(({
         .append("circle")
         .attr("class", `dot dot-${safeKey}`)
         .attr("data-town", type.key)
-        .attr("data-selected", selectedItemsRef.current.includes(type.key) ? "true" : "false")
+        .attr("data-selected", selectedItemsRef.current.includes(type.key) ? true : false)
         .attr("cx", d => xScale(new Date(d.date)))
         .attr("cy", d => yScale(d[y]))
         .attr("r", highlighted.has(type.key) ? 3 : 2)
@@ -233,15 +234,16 @@ const ResalePricesChart = forwardRef(({
         .style("opacity", highlighted.has(type.key) ? 0.8 : 0.3)
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
-          updateDotsAppearance(d, selectedItemsRef.current);
+          updateDotsAppearance(d, selectedItemsRef.current, 'mouseover');
         })
         .on("mouseout", function(event, d) {
           // Check if this dot is selected using the data attribute
-          const isSelected = d3.select(this).attr("data-selected") === "true";
-          
+          const isSelected = d3.select(this).attr("data-selected") === true;
+          const isHovered = d3.select(this).attr("data-hovered") === true;
+
           // Only update appearance if not selected
-          if (!isSelected) {
-            updateDotsAppearance(null, selectedItemsRef.current);
+          if (!isSelected || isHovered) {
+            updateDotsAppearance(d, selectedItemsRef.current, 'mouseout');
           }
         })
         .on("click", function(event, d) {
@@ -252,25 +254,20 @@ const ResalePricesChart = forwardRef(({
           const newSelectedItems = isSelected 
             ? selectedItemsRef.current.filter(item => item !== clickedName)
             : [...selectedItemsRef.current, clickedName];
-
-          // Update all dots with the same town name
-          svg.selectAll('.dot').each(function(dotData) {
-            if (dotData && dotData[groupBy] === clickedName) {
-              d3.select(this).attr("data-selected", !isSelected ? "true" : "false");
-            }
-          });
           
           selectedItemsRef.current = newSelectedItems;
           onDotClick(clickedName, groupBy);
-          updateDotsAppearance(null, newSelectedItems);
+          updateDotsAppearance(null, newSelectedItems, 'click');
         });
       });
+
+      //console.log('selectedItemsRef.current', selectedItemsRef.current);
 
       // Apply existing selections after all dots are created
       if (selectedItemsRef.current.length > 0) {
         // Use a slight delay to ensure all DOM elements are ready
         setTimeout(() => {
-          updateDotsAppearance(null, selectedItemsRef.current);
+          updateDotsAppearance(null, selectedItemsRef.current, 'click');
         }, 0);
       }
   }, [data, dimensions, updateDotsAppearance, onDotClick, y, groupBy]);
@@ -278,7 +275,7 @@ const ResalePricesChart = forwardRef(({
   return (
     <div id='chart-resale-prices'>
         {data?.length === 0 ? (
-          <div>No data available...</div>
+          <div>Loading data...</div>
         ) : (
           <div ref={chartRef} style={{ width: '100%', height: '100%' }} />
         )}
@@ -296,23 +293,23 @@ const initializeSvg = (container, width, height) => {
     .append("g");
 };
 
-const getPointStyle = (dotName, isSelected, isHovered, hasSelections, highlighted, colorScale) => {
-  if (isSelected || isHovered) {
+const getPointStyle = (dotName, isSelected, isHovered, highlighted, colorScale) => {
+  if (isHovered) {
     return {
       fill: highlighted.has(dotName) ? colorScale(dotName) : 'white',
-      opacity: 0.8,
-      radius: (highlighted.has(dotName) ? 2.5 : 2) * 1.35
-    };
-  }
-  
-  if (hasSelections) {
-    return {
-      fill: CHART_CONFIG.axisColor,
-      opacity: 0.3,
-      radius: 2
+      opacity: 1,
+      radius: (highlighted.has(dotName) ? 2.5 : 2) * 2
     };
   }
 
+  if (isSelected) {
+    return {
+      fill: highlighted.has(dotName) ? colorScale(dotName) : 'white',
+      opacity: 0.8,
+      radius: (highlighted.has(dotName) ? 2.5 : 2) * 1.5
+    };
+  } 
+  
   if (highlighted.has(dotName)) {
     return {
       fill: colorScale(dotName),

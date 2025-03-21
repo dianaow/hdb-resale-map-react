@@ -92,7 +92,7 @@ const MapComponent = forwardRef(({
     const initMapLayers = () => {
       // Add source if it doesn't exist
       if (map.getSource('markers')) {
-        console.log('Markers source already exists, returning');
+        //console.log('Markers source already exists, returning');
         return;
       }
 

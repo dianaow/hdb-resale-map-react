@@ -75,7 +75,7 @@ export function useMapState(
     }
   }, [selectedTowns, mapLoaded, calculateBounds]);
 
-  const addHighlightLayer = useCallback((points, layerId, color) => {
+  const addHighlightLayer = useCallback((points, layerId, type) => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -109,11 +109,13 @@ export function useMapState(
     };
     
     if (centroid.lat && centroid.lon) {
-      map.flyTo({
-        center: [centroid.lon, centroid.lat],
-        zoom: 15
-      });
-      
+      if(type === 'town') {
+        map.flyTo({
+          center: [centroid.lon, centroid.lat],
+          zoom: 15
+        });
+      }
+        
       if (!map.getSource(layerId)) {
         map.addSource(layerId, {
           type: 'geojson',
@@ -156,7 +158,7 @@ export function useMapState(
           'circle-color': 'rgba(0, 0, 0, 0)',
           'circle-opacity': 1,
           'circle-stroke-width': 1.5,
-          'circle-stroke-color': color
+          'circle-stroke-color': type === 'town' ? 'white' : 'black'
         }
       });
     }
@@ -232,7 +234,6 @@ export function useMapState(
     } 
 
     if (highlightedAreasRef.current.has(area)) {
-
       // Remove highlight if clicking the same area
       removeHighlightLayer(area);
       highlightedAreasRef.current.delete(area);
@@ -253,7 +254,6 @@ export function useMapState(
           removeHighlightLayer(street);
         });
       }
-
     } else {
       // Add new highlight layer
       const points = chartType === 'town' 
@@ -261,7 +261,7 @@ export function useMapState(
         : currentProperties.filter(p => p.street?.toLowerCase() === area?.toLowerCase());
 
       if (points.length > 0) {
-        addHighlightLayer(points, area, chartType === 'town' ? 'white' : 'black');
+        addHighlightLayer(points, area, chartType);
         highlightedAreasRef.current.add(area);
       }
     }

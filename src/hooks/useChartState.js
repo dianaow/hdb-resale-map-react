@@ -1,18 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 
 export function useChartState() {
   const [selectedFlatType, setSelectedFlatType] = useState('4 ROOM');
   const [selectedTowns, setSelectedTowns] = useState([]);
   const [selectedStreets, setSelectedStreets] = useState([]);
   const [yearRange, setYearRange] = useState([1960, new Date().getFullYear()]);
+  const [chartType, setChartType] = useState('town');
 
-  const chartType = useMemo(() => {
-    if(selectedTowns.length === 0 || selectedTowns[0] === 'All Towns') {
-      return 'town'
-    } else {
-      return 'street' 
+  useEffect(() => {
+    const newChartType = (selectedTowns.length === 0 || selectedTowns[0] === 'All Towns') 
+      ? 'town' 
+      : 'street';
+    
+    if (newChartType !== chartType) {
+      setChartType(newChartType);
     }
-  }, [selectedTowns])
+  }, [selectedTowns, chartType]);
+
 
   return {
     selectedTowns,
@@ -23,6 +27,7 @@ export function useChartState() {
     setSelectedFlatType,
     chartType,
     yearRange,
-    setYearRange
+    setYearRange,
+    setChartType
   };
 } 

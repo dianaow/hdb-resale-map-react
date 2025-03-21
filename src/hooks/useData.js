@@ -112,7 +112,7 @@ export function useData(selectedTowns) {
       } finally {
         if (isMounted) {
           setIsLoading(false);
-          //console.log("Data loading complete");
+          console.log("Data loading complete");
         }
       }
     }
@@ -153,10 +153,7 @@ export function useData(selectedTowns) {
         
         // Set loading state before fetch
         setIsDynamicDataLoading(true);
-        // Don't set isLoading to true for dynamic data fetches
-        // setIsLoading(true);
-        //console.log(`Fetching data for towns: ${selectedTowns.join(', ')}`);
-        
+
         // Prepare date parameters
         const currentDate = new Date();
         const currentYearMonth = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0');
@@ -172,7 +169,7 @@ export function useData(selectedTowns) {
           endpoint = `${API_ENDPOINT}/api/prices?towns=${encodeURIComponent(selectedTowns.join(','))}&start_date=${threeYearsAgoYearMonth}&end_date=${currentYearMonth}`;
         }
 
-        //console.log("Fetching from endpoint:", endpoint);
+        console.log("Fetching from endpoint:", endpoint);
         
         // Fetch data
         const response = await fetch(endpoint, { signal });
@@ -208,7 +205,7 @@ export function useData(selectedTowns) {
         // Reset loading state
         if (isMounted) {
           setIsDynamicDataLoading(false);
-          //console.log("Dynamic data loading complete");
+          console.log("Dynamic data loading complete");
         }
       }
     }
@@ -233,6 +230,7 @@ export function useData(selectedTowns) {
     streetPrices,
     isLoading,
     isDynamicDataLoading,
+    setIsDynamicDataLoading,
     error,
     isValidNumber,
     getPriceColor

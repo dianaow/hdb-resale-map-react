@@ -34,6 +34,7 @@ function App() {
     streetPrices,
     isLoading,
     isDynamicDataLoading,
+    setIsDynamicDataLoading,
     error,
     isValidNumber,
     getPriceColor
@@ -102,14 +103,27 @@ function App() {
     updateMapColors,
     updateMapBounds,
     updateMarkerLayer,
-    handleAreaClick,
-  } = useMapState(updatedProperties, geojson, selectedTowns, yearRange);
+    handleAreaClick
+  } = useMapState(
+    updatedProperties, 
+    geojson, 
+    selectedTowns, 
+    yearRange
+  );
 
   // Memoize filtered data with precise dependencies
   const filteredData = useMemo(() => {
-    // Skip calculation only if still loading initial data
-    if (isLoading) {
-      //console.log('Still loading initial data, skipping filteredData calculation');
+    console.log('filteredData', isLoading,
+      isDynamicDataLoading,
+      chartType,
+      aggTownPrices.length,
+      aggStreetPrices.length,
+      selectedTowns,
+      selectedFlatType
+    );
+    // Skip calculation if loading initial data or dynamic data
+    if (isLoading || isDynamicDataLoading) {
+      //console.log('Still loading data, skipping filteredData calculation');
       return [];
     }
     
@@ -129,45 +143,40 @@ function App() {
 
         return matchesTown && matchesFlatType;
       });
-      //console.log(`Filtered ${aggTownPrices.length} town prices to ${filtered.length} items`);
+      console.log(`Filtered ${aggTownPrices.length} town prices to ${filtered.length} items`);
       return filtered;
     } else {
       // For street view
       // Only filter by flat type if we have street prices and dynamic data is not loading
-      if (!aggStreetPrices?.length) {
-        console.log('No street prices data available');
-        
-        // If we're actively loading dynamic data, return empty array as expected
-        if (isDynamicDataLoading) {
-          return [];
-        }
-        
+      if (!aggStreetPrices?.length) {       
         return [];
       }
-      
+            
       const filtered = aggStreetPrices.filter(item => {
         const matchesFlatType = !selectedFlatType || 
                               item.flat_type === selectedFlatType;
 
         return matchesFlatType;
       });
-      //console.log(`Filtered ${aggStreetPrices.length} street prices to ${filtered.length} items`);
+
+      console.log(`Filtered ${aggStreetPrices.length} street prices to ${filtered.length} items for ${selectedTowns} and ${selectedFlatType}`);
       return filtered;
     }
   }, [
-    isLoading,
-    isDynamicDataLoading,
-    chartType,
-    aggTownPrices,
-    aggStreetPrices,
-    selectedTowns,
-    selectedFlatType
+      isLoading,
+      isDynamicDataLoading,
+      chartType,
+      aggTownPrices,
+      aggStreetPrices,
+      selectedTowns,
+      selectedFlatType
   ]);
 
-  // Memoize chart options
-  const chartOptions = useMemo(() => ({
-    groupBy: chartType
-  }), [chartType]);
+  const chartOptions = useMemo(() => {
+    return {
+      groupBy: chartType
+    };
+  }, [chartType]);
 
   const handleMapLoaded = useCallback((mapInstance) => {
     setMapInstance(mapInstance);
@@ -183,30 +192,58 @@ function App() {
         ? selectedTowns.filter(t => t !== town)
         : [...selectedTowns, town];
       
+      setIsDynamicDataLoading(true);
       setSelectedTowns(newSelectedTowns);
 
       handleAreaClick(town, 'town');
     }
-  }, [selectedTowns, setSelectedTowns, handleAreaClick]);
+  }, [selectedTowns, setSelectedTowns, handleAreaClick, setIsDynamicDataLoading]);
 
   const handleDotClick = useCallback((clickedName, type) => {
     handleAreaClick(clickedName, type);
-  }, [handleAreaClick]);
 
-  const handleMapMarkerClick = useCallback((street, town) => {
-    // Update highlight state on map
-    handleAreaClick(street, 'street');
-    
-    // Update highlight state on chart
-    if (chartRef.current) {
-      chartRef.current.highlightDots(street);
-    }
-
-    // Switch to street view and set the selected town
-    if (town) {
-      setSelectedTowns([town]);
+    if(type === 'town') {
+      setIsDynamicDataLoading(true);
+      setSelectedTowns([clickedName]);
     }
   }, [handleAreaClick, setSelectedTowns, setChartType]);
+
+  const handleMapMarkerClick = useCallback((street, town) => {
+    // Update highlight state on chart
+    if (chartRef?.current) {
+      chartRef.current.highlightDots(street);
+    }
+  
+    // Use state updater functions to access latest state values
+    setSelectedTowns(currentSelectedTowns => {
+      // Check if we need to add this town to selectedTowns
+      const needToAddTown = !currentSelectedTowns.includes(town);
+      
+      if (needToAddTown) {
+        setIsDynamicDataLoading(true);
+        
+        handleAreaClick(town, 'town');
+        
+        // Return updated towns array
+        return [...currentSelectedTowns, town];
+      }
+      
+      return currentSelectedTowns;
+    });
+  
+    // Always add/toggle street highlight (black layer) after town processing
+    setTimeout(() => {
+      handleAreaClick(street, 'street');
+    }, 10);
+  
+    // Update chart type if needed
+    setChartType(currentChartType => {
+      if (currentChartType === 'town') {
+        return 'street';
+      }
+      return currentChartType;
+    });
+  }, [chartRef, handleAreaClick, setIsDynamicDataLoading, setSelectedTowns, setChartType]);
 
   useEffect(() => {
     if (mapLoaded) {
@@ -253,26 +290,20 @@ function App() {
           yearRange={yearRange}
           setYearRange={setYearRange}
         />
-        {isDynamicDataLoading ? (
-          <div className="loading-indicator">Loading town data...</div>
-        ) : (
-          <>
-            <FlatTypeDropdown
-              selectedFlatType={selectedFlatType}
-              setSelectedFlatType={setSelectedFlatType}
-              data={aggTownPrices}
-              chartType={chartType}
-              disabled={isDynamicDataLoading}
-            />
-            <ResalePricesChart
-              ref={chartRef}
-              data={filteredData}
-              onDotClick={handleDotClick}
-              userOptions={chartOptions}
-              key={`prices-chart-${isLoading ? 'ready' : 'loading'}`}
-            />
-          </>
-        )}
+        <FlatTypeDropdown
+          selectedFlatType={selectedFlatType}
+          setSelectedFlatType={setSelectedFlatType}
+          data={aggTownPrices}
+          chartType={chartType}
+          disabled={isDynamicDataLoading}
+        />
+        <ResalePricesChart
+          ref={chartRef}
+          data={filteredData}
+          onDotClick={handleDotClick}
+          userOptions={chartOptions}
+          key={`prices-chart-${isLoading ? 'ready' : 'loading'}`}
+        />
       </div>
 
       <div id="map-container">
