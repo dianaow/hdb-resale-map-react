@@ -40,7 +40,15 @@ function App() {
     getPriceColor
   } = useData(selectedTowns);
 
-  // Memoize updated properties
+  const filteredProperties = useMemo(() => {
+    if (!properties?.length) return [];
+    if(selectedTowns.length === 0 || selectedTowns[0] === 'All Towns') {
+      return properties;
+    } else {
+      return properties.filter(d => selectedTowns.includes(d.town));
+    }
+  }, [properties, selectedTowns]);
+
   const updatedProperties = useMemo(() => {
     if (!properties?.length) return [];
 
@@ -113,14 +121,6 @@ function App() {
 
   // Memoize filtered data with precise dependencies
   const filteredData = useMemo(() => {
-    console.log('filteredData', isLoading,
-      isDynamicDataLoading,
-      chartType,
-      aggTownPrices.length,
-      aggStreetPrices.length,
-      selectedTowns,
-      selectedFlatType
-    );
     // Skip calculation if loading initial data or dynamic data
     if (isLoading || isDynamicDataLoading) {
       //console.log('Still loading data, skipping filteredData calculation');
@@ -209,6 +209,7 @@ function App() {
   }, [handleAreaClick, setSelectedTowns, setChartType]);
 
   const handleMapMarkerClick = useCallback((street, town) => {
+    console.log('handleMapMarkerClick', street, town);
     // Update highlight state on chart
     if (chartRef?.current) {
       chartRef.current.highlightDots(street);
@@ -245,6 +246,19 @@ function App() {
     });
   }, [chartRef, handleAreaClick, setIsDynamicDataLoading, setSelectedTowns, setChartType]);
 
+  const handleLegendPillClick = useCallback((status, selectedPills) => {
+    if (mapLoaded) {
+      updateMarkerLayer(status, selectedPills);
+    }
+  }, [mapLoaded, updateMarkerLayer]);
+
+  const handleColorChange = useCallback((newColorStatus) => {
+    // Reset any active filters when color option changes
+    if (mapLoaded) {
+      updateMarkerLayer(newColorStatus);
+    }
+  }, [mapLoaded, updateMarkerLayer]);
+
   useEffect(() => {
     if (mapLoaded) {
       updateMapColors();
@@ -278,7 +292,6 @@ function App() {
         </div>
         <TownsDropdown
           selectedTowns={selectedTowns}
-          setSelectedTowns={setSelectedTowns}
           properties={updatedProperties}
           geojson={geojson}
           yearRange={yearRange}
@@ -286,7 +299,7 @@ function App() {
           onTownSelect={handleTownSelection}
         />
         <TimelineChart
-          properties={updatedProperties}
+          properties={filteredProperties}
           yearRange={yearRange}
           setYearRange={setYearRange}
         />
@@ -308,17 +321,21 @@ function App() {
 
       <div id="map-container">
         <MapComponent
+          ref={mapRef}
           properties={updatedProperties}
           onMapLoaded={handleMapLoaded}
-          ref={mapRef}
           onMarkerClick={handleMapMarkerClick}
         />
         <div id="map-panel">
           <ColorDropdown
             selectedLegendStatus={selectedLegendStatus}
             setSelectedLegendStatus={setSelectedLegendStatus}
+            onColorChange={handleColorChange}
           />
-          <Legend selectedLegendStatus={selectedLegendStatus} />
+          <Legend 
+            selectedLegendStatus={selectedLegendStatus}
+            onLegendPillClick={handleLegendPillClick}
+          />
           <MapControls 
             mapRef={mapRef} 
             selectedTowns={selectedTowns}

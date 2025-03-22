@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 
 const TownsDropdown = ({
   selectedTowns,
-  setSelectedTowns,
   properties,
   yearRange,
   disabled,
@@ -25,12 +24,7 @@ const TownsDropdown = ({
 
   const handleTownClick = (town) => {
     if (disabled) return;
-    
-    if (town === 'All Towns') {
-      onTownSelect('All Towns');
-    } else {
-      onTownSelect(town);
-    }
+    onTownSelect(town);
   };
 
   const filteredProperties = properties.filter(d => 

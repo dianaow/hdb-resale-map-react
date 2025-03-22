@@ -167,7 +167,7 @@ const ResalePricesChart = forwardRef(({
   // Main chart rendering effect
   useEffect(() => {
     if (!data?.length || !chartRef.current || !dimensions.width) return;
-    console.log('Rendering dot chart')
+    console.log('Rendering dot chart', groupBy)
     if(groupBy === 'town') {
       // Filter selectedItemsRef to only keep items that exist in the current data
       const availableItemsInData = new Set(data.map(d => d[groupBy]));
@@ -298,7 +298,7 @@ const getPointStyle = (dotName, isSelected, isHovered, highlighted, colorScale) 
     return {
       fill: highlighted.has(dotName) ? colorScale(dotName) : 'white',
       opacity: 1,
-      radius: (highlighted.has(dotName) ? 2.5 : 2) * 2
+      radius: 5
     };
   }
 
@@ -306,7 +306,7 @@ const getPointStyle = (dotName, isSelected, isHovered, highlighted, colorScale) 
     return {
       fill: highlighted.has(dotName) ? colorScale(dotName) : 'white',
       opacity: 0.8,
-      radius: (highlighted.has(dotName) ? 2.5 : 2) * 1.5
+      radius: 4
     };
   } 
   

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as d3 from 'd3';
-import { TAG_COLORS } from '../constants';
+import { TAG_COLORS, PRICE_THRESHOLDS, AGE_THRESHOLDS, PRICE_COLORS } from '../constants';
 
 export function useData(selectedTowns) {
   const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT;
@@ -26,14 +26,19 @@ export function useData(selectedTowns) {
   }, []);
 
   const getPriceColor = useCallback((price) => {
-    const thresholds = [0, 300000, 600000, 800000, 1000000];
-    const colors = ["white", "#99f6e4", "#2dd4bf", "#FF7F50", "#FFD700"];
     const colorPrice = d3.scaleThreshold()
-      .domain(thresholds.slice(1))
-      .range(colors);
+      .domain(PRICE_THRESHOLDS.slice(1))
+      .range(PRICE_COLORS);
     return colorPrice(price);
   }, []);
   
+  const getAgeColor = useCallback((age) => {
+    const colorAge = d3.scaleSequential()
+      .domain([AGE_THRESHOLDS[0], AGE_THRESHOLDS[AGE_THRESHOLDS.length - 1]])
+      .interpolator(d3.interpolateBuPu);
+    return colorAge(age);  
+  }, []);
+
   // Memoize helper functions
   const parseQuarter = useCallback((quarterString) => {
     if (!quarterString) return null;
@@ -89,7 +94,7 @@ export function useData(selectedTowns) {
           age: new Date().getFullYear() - (+d['year']),
           date: d3.timeParse("%Y")(d['year']),
           block: extractFirstNumber(d['address']),
-          color: getColor(d.tag),
+          color: TAG_COLORS[d.tag] || "#000000",
           ageColor: getAgeColor(new Date().getFullYear() - (+d['year']))
         }));
 
@@ -233,7 +238,8 @@ export function useData(selectedTowns) {
     setIsDynamicDataLoading,
     error,
     isValidNumber,
-    getPriceColor
+    getPriceColor,
+    getAgeColor
   };
 }
 
@@ -242,15 +248,4 @@ function extractFirstNumber(str) {
   if (!str) return null;
   const match = str.match(/\d+[A-Za-z]*/);
   return match ? match[0] : null;
-}
-
-function getColor(tag) {
-  return TAG_COLORS[tag] || "#000000";
-}
-
-function getAgeColor(age) {
-  const colorAge = d3.scaleSequential()
-    .domain([0, 50])
-    .interpolator(d3.interpolateBuPu);
-  return colorAge(age);
 }

@@ -2,25 +2,31 @@ import React, { useState } from 'react';
 
 const ColorDropdown = ({
   selectedLegendStatus,
-  setSelectedLegendStatus
+  setSelectedLegendStatus,
+  onColorChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const colorOptions = [
-    { value: 'type', text: 'Property Type' },
+    { value: 'tag', text: 'Property Type' },
     { value: 'age', text: 'Age' },
     { value: 'price', text: 'Average Resale Price (past 6 months)' }
   ];
 
   const handleColorClick = (value) => {
-    setSelectedLegendStatus(value);
+    if (value !== selectedLegendStatus) {
+      setSelectedLegendStatus(value);
+      if (onColorChange) {
+        onColorChange(value);
+      }
+    }
     setIsOpen(false);
   };
 
   return (
     <div className="color-dropdown">
       <label>Color by: </label>
-      <div className={`dropdown-container ${isOpen ? 'dropdown-open' : ''}`} style={{ width: '160px' }}>
+      <div className={`dropdown-container ${isOpen ? 'dropdown-open' : ''}`} style={{ width: '300px' }}>
         <button
           className={`dropdown-button ${isOpen ? 'active' : ''}`}
           onClick={() => setIsOpen(!isOpen)}

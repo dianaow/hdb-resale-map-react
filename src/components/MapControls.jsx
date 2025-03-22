@@ -5,7 +5,7 @@ const MapControls = ({
   mapRef, 
   selectedTowns, 
   selectedLegendStatus,
-  mapLoaded 
+  mapLoaded
 }) => {
   const [pitchButtonText, setPitchButtonText] = useState('Display in 3D');
   const [clusterButtonText, setClusterButtonText] = useState('Enable Clustering');
@@ -13,7 +13,7 @@ const MapControls = ({
   // Calculate if clustering is possible based on current state
   const canCluster = mapLoaded && 
                     (selectedTowns.length === 0 || selectedTowns[0] === "All Towns") && 
-                    selectedLegendStatus === 'type' && 
+                    selectedLegendStatus === 'tag' && 
                     mapRef.current?.getPitch() === 0;
 
   // Effect to update button text when map pitch changes

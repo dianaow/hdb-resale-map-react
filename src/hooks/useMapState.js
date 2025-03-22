@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { PRICE_THRESHOLDS, AGE_THRESHOLDS } from '../constants';
 
 export function useMapState(
   properties,
@@ -7,7 +8,7 @@ export function useMapState(
   selectedTowns,
   yearRange
 ) {
-  const [selectedLegendStatus, setSelectedLegendStatus] = useState('type');
+  const [selectedLegendStatus, setSelectedLegendStatus] = useState('tag');
   const [mapLoaded, setMapLoaded] = useState(false);
   const highlightedAreasRef = useRef(new Set());
   const mapRef = useRef(null);
@@ -15,9 +16,8 @@ export function useMapState(
   // Keep track of the last valid properties
   const lastValidPropertiesRef = useRef(properties);
   useEffect(() => {
-    if (properties?.length > 0) {
-      lastValidPropertiesRef.current = properties;
-    }
+    // Always update the reference when properties change, regardless of length
+    lastValidPropertiesRef.current = properties;
   }, [properties]);
 
   const calculateBounds = useCallback((towns) => {
@@ -48,7 +48,7 @@ export function useMapState(
 
     if(selectedLegendStatus === 'age') {
       map.setPaintProperty('circle', 'circle-color', ['get', 'ageColor']);
-    } else if(selectedLegendStatus === 'type') {
+    } else if(selectedLegendStatus === 'tag') {
       map.setPaintProperty('circle', 'circle-color', ['get', 'color']);
     } else if(selectedLegendStatus === 'price') {
       map.setPaintProperty('circle', 'circle-color', ['get', 'priceColor']);
@@ -81,6 +81,7 @@ export function useMapState(
 
     // Check if layer already exists - if it does, just return
     if (map.getLayer(layerId)) {
+      console.log('Layer already exists', layerId);
       return;
     }
 
@@ -176,7 +177,7 @@ export function useMapState(
     }
   }, []);
 
-  const updateMarkerLayer = useCallback(() => {
+  const updateMarkerLayer = useCallback((status, selectedPills = []) => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -195,6 +196,55 @@ export function useMapState(
         ['<=', ['to-number', ['get', 'year']], endYear]
       ]);
 
+      // If there are no pills selected, show all points
+      if (selectedPills && selectedPills.length > 0) {
+        if(status === 'age') {
+          // Create a filter condition for each selected age range
+          const ageFilters = selectedPills.map(pill => {
+            const ageIndex = AGE_THRESHOLDS.indexOf(pill);
+            const minAge = pill;
+            const maxAge = ageIndex < (AGE_THRESHOLDS.length-1) ? AGE_THRESHOLDS[ageIndex+1] - 1 : AGE_THRESHOLDS[AGE_THRESHOLDS.length-1] * 2;
+            console.log('age', minAge, maxAge);
+            return ['all',
+              ['>=', ['to-number', ['get', 'age']], minAge],
+              ['<=', ['to-number', ['get', 'age']], maxAge]
+            ];
+          });
+          
+          if (ageFilters.length > 0) {
+            filterConditions.push(['any', ...ageFilters]);
+          }
+        } else if(status === 'price') {
+          // Create a filter condition for each selected price range
+          const priceFilters = selectedPills.map(pill => {
+            const priceIndex = PRICE_THRESHOLDS.indexOf(pill);
+            const minPrice = pill;
+            const maxPrice = priceIndex < (PRICE_THRESHOLDS.length-1) ? PRICE_THRESHOLDS[priceIndex+1]-1 : PRICE_THRESHOLDS[PRICE_THRESHOLDS.length-1] * 2;
+            console.log('price', minPrice, maxPrice);
+            return ['all',
+              // First check if price is a valid number (not "NA" string)
+              ['has', 'price'],
+              ['!=', ['get', 'price'], 'NA'],
+              ['>=', ['to-number', ['get', 'price']], minPrice],
+              ['<=', ['to-number', ['get', 'price']], maxPrice]
+            ];
+          });
+          
+          if (priceFilters.length > 0) {
+            filterConditions.push(['any', ...priceFilters]);
+          }
+        } else if(status === 'tag') {
+          // Create a filter condition for each selected tag
+          const tagFilters = selectedPills.map(type => {
+            return ['==', ['get', 'tag'], type];
+          });
+          
+          if (tagFilters.length > 0) {
+            filterConditions.push(['any', ...tagFilters]);
+          }
+        }
+      } 
+      
       // Apply filter to circle layer
       map.setFilter('circle', ['all', ...filterConditions]);
       
@@ -211,7 +261,7 @@ export function useMapState(
         map.setFilter('cluster-count', ['has', 'point_count']);
       }
     }
-
+    
   }, [yearRange]);
 
   const handleAreaClick = useCallback((area, chartType) => {
@@ -233,7 +283,11 @@ export function useMapState(
       return;
     } 
 
+    // Normalize area name for case-insensitive comparison
+    const normalizedArea = typeof area === 'string' ? area.toLowerCase() : '';
+
     if (highlightedAreasRef.current.has(area)) {
+      console.log('Removing highlight for', area);
       // Remove highlight if clicking the same area
       removeHighlightLayer(area);
       highlightedAreasRef.current.delete(area);
@@ -241,7 +295,7 @@ export function useMapState(
       if(chartType === 'town') {
         // Find all streets in this town that are currently highlighted
         const streetsInTown = currentProperties
-        .filter(p => p.town?.toLowerCase() === area?.toLowerCase())
+        .filter(p => p.town && p.town.toLowerCase() === normalizedArea)
         .map(p => p.street)
         .filter(Boolean);
       
@@ -250,19 +304,29 @@ export function useMapState(
         
         // Check which streets are currently highlighted and remove them
         uniqueStreets.forEach(street => {
-          // Remove street highlight
-          removeHighlightLayer(street);
+          if (highlightedAreasRef.current.has(street)) {
+            // Remove street highlight
+            removeHighlightLayer(street);
+            highlightedAreasRef.current.delete(street);
+          }
         });
       }
     } else {
       // Add new highlight layer
-      const points = chartType === 'town' 
-        ? currentProperties.filter(p => p.town?.toLowerCase() === area?.toLowerCase())
-        : currentProperties.filter(p => p.street?.toLowerCase() === area?.toLowerCase());
+      let points = [];
+      
+      if (chartType === 'town') {
+        points = currentProperties.filter(p => p.town && p.town.toLowerCase() === normalizedArea);
+      } else if (chartType === 'street') {
+        points = currentProperties.filter(p => p.street && p.street.toLowerCase() === normalizedArea);
+      }
 
       if (points.length > 0) {
+        console.log(`Adding highlight for ${chartType}: ${area} with ${points.length} points`);
         addHighlightLayer(points, area, chartType);
         highlightedAreasRef.current.add(area);
+      } else {
+        console.log(`No points found for ${chartType}: ${area}`);
       }
     }
   }, [addHighlightLayer, removeHighlightLayer]);
