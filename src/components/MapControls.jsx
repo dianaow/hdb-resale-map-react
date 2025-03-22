@@ -16,6 +16,8 @@ const MapControls = ({
                     selectedLegendStatus === 'tag' && 
                     mapRef.current?.getPitch() === 0;
 
+  const canPitch = mapLoaded && selectedLegendStatus === 'tag';
+
   // Effect to update button text when map pitch changes
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
@@ -104,12 +106,12 @@ const MapControls = ({
   return (
     <div style={{ display: 'flex' }}>
       <div
-        className={`button ${!mapLoaded ? 'button-disabled' : ''}`}
+        className={`button ${!canPitch ? 'button-disabled' : ''}`}
         id="pitch-button"
-        onClick={mapLoaded ? handlePitchToggle : undefined}
+        onClick={canPitch ? handlePitchToggle : undefined}
         style={{
-          cursor: mapLoaded ? 'pointer' : 'not-allowed',
-          opacity: mapLoaded ? '1' : '0.5'
+          cursor: canPitch ? 'pointer' : 'not-allowed',
+          opacity: canPitch ? '1' : '0.5'
         }}
       >
         {pitchButtonText}

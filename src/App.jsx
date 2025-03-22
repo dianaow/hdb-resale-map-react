@@ -7,6 +7,7 @@ import FlatTypeDropdown from './components/FlatTypeDropdown';
 import ColorDropdown from './components/ColorDropdown';
 import Legend from './components/Legend';
 import MapControls from './components/MapControls';
+import InfoModal from './components/InfoModal';
 import { useData } from './hooks/useData';
 import { useMapState } from './hooks/useMapState';
 import { useChartState } from './hooks/useChartState';
@@ -14,6 +15,7 @@ import './App.css';
 
 function App() {
   const chartRef = useRef(null);  // Add ref for ResalePricesChart
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const {
     selectedTowns,
@@ -158,7 +160,6 @@ function App() {
 
         return matchesFlatType;
       });
-
       console.log(`Filtered ${aggStreetPrices.length} street prices to ${filtered.length} items for ${selectedTowns} and ${selectedFlatType}`);
       return filtered;
     }
@@ -192,24 +193,21 @@ function App() {
         ? selectedTowns.filter(t => t !== town)
         : [...selectedTowns, town];
       
-      setIsDynamicDataLoading(true);
       setSelectedTowns(newSelectedTowns);
 
       handleAreaClick(town, 'town');
     }
-  }, [selectedTowns, setSelectedTowns, handleAreaClick, setIsDynamicDataLoading]);
+  }, [selectedTowns, setSelectedTowns, handleAreaClick]);
 
   const handleDotClick = useCallback((clickedName, type) => {
     handleAreaClick(clickedName, type);
 
     if(type === 'town') {
-      setIsDynamicDataLoading(true);
       setSelectedTowns([clickedName]);
     }
   }, [handleAreaClick, setSelectedTowns, setChartType]);
 
   const handleMapMarkerClick = useCallback((street, town) => {
-    console.log('handleMapMarkerClick', street, town);
     // Update highlight state on chart
     if (chartRef?.current) {
       chartRef.current.highlightDots(street);
@@ -221,8 +219,7 @@ function App() {
       const needToAddTown = !currentSelectedTowns.includes(town);
       
       if (needToAddTown) {
-        setIsDynamicDataLoading(true);
-        
+        setIsDynamicDataLoading(true);  
         handleAreaClick(town, 'town');
         
         // Return updated towns array
@@ -237,14 +234,14 @@ function App() {
       handleAreaClick(street, 'street');
     }, 10);
   
-    // Update chart type if needed
-    setChartType(currentChartType => {
-      if (currentChartType === 'town') {
-        return 'street';
-      }
-      return currentChartType;
-    });
-  }, [chartRef, handleAreaClick, setIsDynamicDataLoading, setSelectedTowns, setChartType]);
+    // // Update chart type if needed
+    // setChartType(currentChartType => {
+    //   if (currentChartType === 'town') {
+    //     return 'street';
+    //   }
+    //   return currentChartType;
+    // });
+  }, [chartRef, selectedTowns, handleAreaClick, setIsDynamicDataLoading, setSelectedTowns, setChartType]);
 
   const handleLegendPillClick = useCallback((status, selectedPills) => {
     if (mapLoaded) {
@@ -287,9 +284,55 @@ function App() {
       )}
       <div id="main">
         <div id='title'>
-          <h2>Singapore's HDB Properties</h2>
+          <div className="title-container">
+            <h2>Singapore's HDB Properties</h2>
+            <div 
+              className="info-icon" 
+              onClick={() => setIsInfoModalOpen(true)} 
+              title="About this visualization"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              </svg>
+            </div>
+          </div>
           <h3>Completion Timeline and Resale Market</h3>
         </div>
+        <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)}>
+          <h2>About this Visualization</h2>
+          <p>This interactive visualization shows Singapore's HDB (Housing & Development Board) properties across the city-state.</p>
+          <br></br>
+          <h3>Features:</h3>
+          <ul>
+            <li>View properties by completion year on the timeline</li>
+            <li>Filter by towns, flat type, and year range in combination</li>
+            <li>Color coding by property type, age, or resale price</li>
+            <li>Compare resale prices across different towns and streets</li>
+          </ul>
+          <h3>Data Sources:</h3>
+          <p>The data is sourced from <a href="https://data.gov.sg">data.gov.sg</a> including 
+          <a href="https://data.gov.sg/datasets/d_17f5382f26140b1fdae0ba2ef6239d2f/view"> property information</a>, 
+          <a href="https://data.gov.sg/datasets/d_8b84c4ee58e3cfc0ece0d773c8ca6abc/view"> historical resale transactions</a>, 
+          and <a href="https://data.gov.sg/datasets/d_cc2f9c99c2a7cb55a54ad0f522016011/view"> geographical boundary data</a>.</p>
+          <br></br>
+          <h3>How to Use:</h3>
+          <ul>
+            <li>Drag the timeline to see how resale prices have changed over time</li>
+            <li>When chart is in towns view, either click on a map marker or a circle to switch to chart street view of the selected town.</li>
+            <li>When chart is in street view, click on a map marker to highlight the corresponding street on the chart</li>
+            <li>When chart is in street view, click on a circle on chart to highlight all properties within the selectedstreet.</li>
+            <li>Hover over a circle on the chart to see the median resale price for the month of resale.</li>
+            <li>Click on a legend pill to filter by that property type, age, or resale price</li>
+          </ul>
+
+          <h3>Acknowledgements:</h3>
+          <p>This visualization was created by <a href="https://dianaow.com">Diana Ow</a>, as a tool to aid public house buying for people. If you found this useful, please share it with others! You may also consider sponsoring my coding endeavours through these channels:</p>
+          <ul>
+            <li><a href="https://revolut.me/diana25gx">Revolut</a></li>
+            <li><a href="https://www.paypal.com/paypalme/owdiana">PayPal</a></li>
+          </ul>
+          <p>This project is open source and available on <a href="https://github.com/dianaow/hdb-resale-map-react">GitHub</a>. If you have any feedback or suggestions, please <a href="https://github.com/dianaow/hdb-resale-map-react/issues">open an issue</a>.</p>
+        </InfoModal>
         <TownsDropdown
           selectedTowns={selectedTowns}
           properties={updatedProperties}

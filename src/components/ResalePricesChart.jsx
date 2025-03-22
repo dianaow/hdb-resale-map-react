@@ -95,7 +95,7 @@ const ResalePricesChart = forwardRef(({
       
       tooltip.select(".tooltip-title").text(name);
       tooltip.select(".tooltip-price").text(`${y}: $${hoveredPrice.toLocaleString()}`);
-      tooltip.select(".tooltip-date").text(`Date: ${formatDate(hoveredDate)}`);
+      tooltip.select(".tooltip-date").text(`Date: ${groupBy === 'town' ? data.quarter : formatDate(hoveredDate)}`);
       
       const tooltipWidth = Math.max(
         ...['title', 'price', 'date'].map(c => 

@@ -41,7 +41,7 @@ body {
   flex-direction: row;
   width: 100vw;
   height: 100vh;
-  overflow-y: auto;
+  overflow-y: none;
 }
 
 #main {
@@ -55,6 +55,31 @@ body {
 #title {
   display: flex;
   flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.info-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
 }
 
 .towns-dropdown {

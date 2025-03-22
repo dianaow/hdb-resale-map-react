@@ -6,12 +6,12 @@ const TimelineChart = ({ properties, yearRange, setYearRange }) => {
   const chartRef = useRef(null);
   const brushRef = useRef(null);
   const [brushSelection, setBrushSelection] = useState(null);
-
+  
   useEffect(() => {
     const year_range = [1960, new Date().getFullYear()]
     const years = d3.range(year_range[0], year_range[1])
 
-    if (!chartRef.current || !properties) return;
+    if (!chartRef.current || !properties || properties.length === 0) return;
 
     const data = nestData(properties);
     const res_nested = Array.from(d3.group(data, d => d.tag))
@@ -159,7 +159,11 @@ const TimelineChart = ({ properties, yearRange, setYearRange }) => {
     };
   }, []);
 
-  return <div ref={chartRef} id="chart-timeline" />;
+  if (!properties || properties.length === 0) {
+    return <div ref={chartRef}>Loading data...</div>;
+  } else {
+    return <div ref={chartRef} id="chart-timeline" />;
+  }
 };
 
 // Helper functions
