@@ -305,10 +305,12 @@ const MapComponent = forwardRef(({
   return <div ref={mapContainer} id="map" />;
 });
 
-function addSvgMarkerToMap(map, markerId, color) {
-  // Skip if the image or layer already exists
-  if (map.hasImage(markerId) || map.getLayer(`${markerId}-icon`)) {
-    return;
+export function addSvgMarkerToMap(map, markerId, color) {
+  if (map.hasImage(markerId)) {
+    map.removeImage(markerId);
+  }
+  if (map.getLayer(`${markerId}-icon`)) {
+    map.removeLayer(`${markerId}-icon`);
   }
 
   // Create the SVG with the specified circle color but with smaller initial dimensions

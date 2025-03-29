@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PROPERTY_TAGS } from '../constants';
-
+import { addSvgMarkerToMap } from './MapComponent';
 const MapControls = ({ 
   mapRef, 
   selectedTowns, 
@@ -51,6 +51,7 @@ const MapControls = ({
       // Show 3D buildings if available
       PROPERTY_TAGS.forEach(tag => {
         try {
+          console.log(map.getLayer(tag + '-icon'))
           if (map.getLayer(tag + '-icon')) {
             map.setLayoutProperty(tag + '-icon', 'visibility', 'visible');
           }
@@ -243,7 +244,11 @@ function toggleClustering(map) {
           'circle-color': ['get', 'color']
         }
       });
-      
+
+      PROPERTY_TAGS.forEach(tag => {
+        addSvgMarkerToMap(map, tag);
+      });
+
       return !isCurrentlyClustered;
     } catch (error) {
       console.error("Error in toggleClustering:", error);
